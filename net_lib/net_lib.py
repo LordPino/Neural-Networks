@@ -7,22 +7,25 @@ class FunctionError(Enum):
     MSE = 1
     CROSS_ENTROPY = 2
 
-def init_params(num_layers: int, input_val: int, output_val: int):
-    if num_layers < 2:
+def init_params(layers, output_val: int):
+    if len(layers) < 2:
         raise ValueError("Number of layers must be at least 2")
     
     # Preallocation weights and biases
-    weights = [None] * (num_layers - 1)
-    biases = [None] * (num_layers - 1)
+    weights = [None] * (len(layers) - 1)
+    biases = [None] * (len(layers) - 1)
 
     # First layer 
-    weights[0] = np.random.rand(output_val, input_val)  - 0.5
-    biases[0] = np.random.rand(output_val, 1) - 0.5
+    weights[0] = np.random.rand(layers[1], layers[0])  - 0.5
+    biases[0] = np.random.rand(layers[1], 1) - 0.5
 
     # Middle layers and output layer
-    for i in range(1, num_layers - 1):
-        weights[i] = np.random.rand(output_val, output_val) - 0.5
-        biases[i] = np.random.rand(output_val, 1) - 0.5
+    for i in range(1, len(layers) - 1):
+        weights[i] = np.random.rand(layers[i], layers[i - 1]) - 0.5
+        biases[i] = np.random.rand(layers[i], 1) - 0.5
+        
+    weights[-1] = np.random.rand(output_val, layers[-2]) - 0.5
+    biases[-1] = np.random.rand(output_val, 1) - 0.5
 
     return weights, biases
 
@@ -65,37 +68,36 @@ def derivatie_cross_entropy(y_true, y_pred):
 def derivative_mse(y_true, y_pred):
     return 2 * (y_pred - y_true) / y_true.size
 
-def back_prop(x, y, z, a, weights, biases, activation_functions, activation_derivatives, function_error: FunctionError, use_softmax: bool):
+def back_prop(y, z, a, weights, biases, activation_functions, activation_derivatives, function_error: FunctionError, use_softmax: bool):
     m = y.shape[0]
     one_hot_y = one_hot(y)
 
     # Initialize gradients
     dW = [None] * len(weights)
     dB = [None] * len(biases)
-    dZ = [None] * len(z)
-
+    
     # Output layer error
     if function_error == FunctionError.MSE:
-        dZ[-1] = derivative_mse(one_hot_y, a[-1])
+        dZ = derivative_mse(one_hot_y, a[-1])
     elif function_error == FunctionError.CROSS_ENTROPY:
         if use_softmax:
-            dZ[-1] = a[-1] - one_hot_y
+            dZ = a[-1] - one_hot_y
         else:
-            dZ[-1] = derivatie_cross_entropy(one_hot_y, a[-1])
+            dZ = derivatie_cross_entropy(one_hot_y, a[-1])
 
     # Output layer gradients
-    dW[-1] = (1/m) * np.dot(dZ[-1], a[-2].T)
-    dB[-1] = (1/m) * np.sum(dZ[-1])
+    dW[-1] = (1/m) * np.dot(dZ, a[-2].T)
+    dB[-1] = (1/m) * np.sum(dZ)
 
     # Backpropagation through layers
     for i in range(len(weights) - 2, -1, -1):
-        dA = np.dot(weights[i + 1].T, dZ[i + 1])
+        dA = np.dot(weights[i + 1].T, dZ)
         if activation_derivatives[i] is not None:
-            dZ[i] = dA * activation_derivatives[i](z[i])
+            dZ = dA * activation_derivatives[i](z[i])
         else:
-            dZ[i] = dA * function_derivative(activation_functions[i], z[i])
-        dW[i] = (1/m) * np.dot(dZ[i], a[i].T)
-        dB[i] = (1/m) * np.sum(dZ[i])
+            dZ = dA * function_derivative(activation_functions[i], z[i])
+        dW[i] = (1/m) * np.dot(dZ, a[i].T)
+        dB[i] = (1/m) * np.sum(dZ)
 
     return dW, dB
 
@@ -104,7 +106,7 @@ def update_params(weights, biases, dW, dB, learning_rate):
     new_biases = [None] * len(biases)
 
     for i in range(len(weights)):
-        new_weights[i] = weights[i] - learning_rate * dW[len(weights) - 1 - i]
+        new_weights[i] = weights[i] - learning_rate * dW[i]
         new_biases[i] = biases[i] - learning_rate * dB[len(biases) - 1 - i]
 
     return new_weights, new_biases
@@ -116,12 +118,12 @@ def get_accuracy(predictions, y):
     print(predictions, y)
     return np.sum(predictions == y) / y.size
 
-def gradint_descent(X, Y, epochs, learning_rate, num_layers, input_val, output_val, activation_functions, activation_derivatives, output_function, function_error: FunctionError, use_softmax: bool):
-    weights, biases = init_params(num_layers, input_val, output_val)
+def gradint_descent(X, Y, epochs, learning_rate, num_layers, output_val, activation_functions, activation_derivatives, output_function, function_error: FunctionError, use_softmax: bool):
+    weights, biases = init_params(num_layers, output_val)
 
     for i in range(epochs):
         a, z = forward_prop(X, weights, biases, activation_functions, output_function)
-        dW, dB = back_prop(X, Y, z, a, weights, biases, activation_functions, activation_derivatives, function_error, use_softmax)
+        dW, dB = back_prop(Y, z, a, weights, biases, activation_functions, activation_derivatives, function_error, use_softmax)
         weights, biases = update_params(weights, biases, dW, dB, learning_rate)
         if i % 10 == 0:
             print("epoch: ", i)
@@ -141,7 +143,7 @@ def ReLU(z):
 def ReLU_derivative(z):
     return np.where(z > 0, 1, 0)
 
-data = pd.read_csv(r'.\test_data\train.csv\train.csv')
+data = pd.read_csv(r'.\test_data\train.csv')
 data = np.array(data)
 m, n = data.shape
 np.random.shuffle(data)
@@ -156,4 +158,4 @@ X_train = data_train[1:n]
 X_train = X_train / 255.
 _,m_train = X_train.shape
 
-W, B = gradint_descent(X=X_train, Y=Y_train, epochs=500, learning_rate=0.1, num_layers=2, input_val=784, output_val=10, activation_functions=[ReLU], activation_derivatives=[ReLU_derivative], output_function=soft_max, function_error=FunctionError.CROSS_ENTROPY, use_softmax=True)
+W, B = gradint_descent(X=X_train, Y=Y_train, epochs=500, learning_rate=0.1, num_layers=[784, 15, 10], output_val=10, activation_functions=[ReLU, ReLU], activation_derivatives=[ReLU_derivative, ReLU_derivative], output_function=soft_max, function_error=FunctionError.CROSS_ENTROPY, use_softmax=True)
