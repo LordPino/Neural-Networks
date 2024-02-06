@@ -2,34 +2,41 @@ import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 from enum import Enum
+from typing import List, Callable, Tuple
 
 class FunctionError(Enum):
     MSE = 1
     CROSS_ENTROPY = 2
 
-def init_params(layers, output_val: int):
-    if len(layers) < 2:
+def init_params(neurons_per_layer: List[int], output_val: int) -> Tuple[List[np.ndarray], List[np.ndarray]]:
+    if len(neurons_per_layer) < 2:
         raise ValueError("Number of layers must be at least 2")
     
     # Preallocation weights and biases
-    weights = [None] * (len(layers) - 1)
-    biases = [None] * (len(layers) - 1)
+    weights = [None] * (len(neurons_per_layer) - 1)
+    biases = [None] * (len(neurons_per_layer) - 1)
 
     # First layer 
-    weights[0] = np.random.rand(layers[1], layers[0])  - 0.5
-    biases[0] = np.random.rand(layers[1], 1) - 0.5
+    weights[0] = np.random.rand(neurons_per_layer[1], neurons_per_layer[0])  - 0.5
+    biases[0] = np.random.rand(neurons_per_layer[1], 1) - 0.5
 
     # Middle layers and output layer
-    for i in range(1, len(layers) - 1):
-        weights[i] = np.random.rand(layers[i], layers[i - 1]) - 0.5
-        biases[i] = np.random.rand(layers[i], 1) - 0.5
+    for i in range(1, len(neurons_per_layer) - 1):
+        weights[i] = np.random.rand(neurons_per_layer[i], neurons_per_layer[i - 1]) - 0.5
+        biases[i] = np.random.rand(neurons_per_layer[i], 1) - 0.5
         
-    weights[-1] = np.random.rand(output_val, layers[-2]) - 0.5
+    weights[-1] = np.random.rand(output_val, neurons_per_layer[-2]) - 0.5
     biases[-1] = np.random.rand(output_val, 1) - 0.5
 
     return weights, biases
 
-def forward_prop(x, weights, biases, activation_functions, output_function):
+def forward_prop(
+    x: np.ndarray, 
+    weights: List[np.ndarray], 
+    biases: List[np.ndarray], 
+    activation_functions: List[Callable[[np.ndarray], np.ndarray]], 
+    output_function: Callable[[np.ndarray], np.ndarray]
+) -> Tuple[List[np.ndarray], List[np.ndarray]]: 
     num_layers = len(weights)
     
     # Preallocate lists for z and a with the appropriate sizes
@@ -50,25 +57,39 @@ def forward_prop(x, weights, biases, activation_functions, output_function):
 
     return a, z
 
-def one_hot(y):
+def one_hot(y: np.ndarray) -> np.ndarray:
     one_hot_y = np.zeros((y.size, y.max() + 1))
     one_hot_y[np.arange(y.size), y] = 1
     one_hot_y = one_hot_y.T
     
     return one_hot_y
 
-def function_derivative(function, x, dx=1e-6):
+def function_derivative(
+    function: Callable[[np.ndarray], np.ndarray], 
+    x: np.ndarray, 
+    dx: float = 1e-6
+) -> np.ndarray:
     return (function(x + dx) - function(x)) / dx
 
-def derivatie_cross_entropy(y_true, y_pred):
+def derivatie_cross_entropy(y_true: np.ndarray, y_pred: np.ndarray) -> np.ndarray:
     m = y_true.shape[1]
     loss = -np.sum(y_true * np.log(y_pred + 1e-9)) / m  # Aggiunto 1e-9 per la stabilità numerica
     return loss
 
-def derivative_mse(y_true, y_pred):
+def derivative_mse(y_true: np.ndarray, y_pred: np.ndarray) -> np.ndarray:
     return 2 * (y_pred - y_true) / y_true.size
 
-def back_prop(y, z, a, weights, biases, activation_functions, activation_derivatives, function_error: FunctionError, use_softmax: bool):
+def back_prop(
+    y: np.ndarray, 
+    z: List[np.ndarray], 
+    a: List[np.ndarray], 
+    weights: List[np.ndarray], 
+    biases: List[np.ndarray], 
+    activation_functions: List[Callable[[np.ndarray], np.ndarray]],
+    activation_derivatives: List[Callable[[np.ndarray], np.ndarray]],
+    function_error: FunctionError, 
+    use_softmax: bool
+) -> Tuple[List[np.ndarray], List[np.ndarray]]:
     m = y.shape[0]
     one_hot_y = one_hot(y)
 
@@ -101,7 +122,13 @@ def back_prop(y, z, a, weights, biases, activation_functions, activation_derivat
 
     return dW, dB
 
-def update_params(weights, biases, dW, dB, learning_rate):
+def update_params(
+    weights: List[np.ndarray], 
+    biases: List[np.ndarray], 
+    dW: List[np.ndarray], 
+    dB: List[np.ndarray], 
+    learning_rate: float
+) -> Tuple[List[np.ndarray], List[np.ndarray]]:
     new_weights = [None] * len(weights)
     new_biases = [None] * len(biases)
 
@@ -111,15 +138,27 @@ def update_params(weights, biases, dW, dB, learning_rate):
 
     return new_weights, new_biases
 
-def get_predictions(a):
+def get_predictions(a: np.ndarray) -> np.ndarray:
     return np.argmax(a, axis=0)
 
-def get_accuracy(predictions, y):
+def get_accuracy(predictions: np.ndarray, y: np.ndarray) -> float:
     print(predictions, y)
     return np.sum(predictions == y) / y.size
 
-def gradint_descent(X, Y, epochs, learning_rate, num_layers, output_val, activation_functions, activation_derivatives, output_function, function_error: FunctionError, use_softmax: bool):
-    weights, biases = init_params(num_layers, output_val)
+def gradint_descent(
+    X: np.ndarray, 
+    Y: np.ndarray, 
+    epochs: int, 
+    learning_rate: float, 
+    neurons_per_layer: List[int], 
+    output_val: int, 
+    activation_functions: List[Callable[[np.ndarray], np.ndarray]],
+    activation_derivatives: List[Callable[[np.ndarray], np.ndarray]],
+    output_function: Callable[[np.ndarray], np.ndarray],
+    function_error: FunctionError, 
+    use_softmax: bool
+)-> Tuple[List[np.ndarray], List[np.ndarray]]:
+    weights, biases = init_params(neurons_per_layer, output_val)
 
     for i in range(epochs):
         a, z = forward_prop(X, weights, biases, activation_functions, output_function)
@@ -131,16 +170,16 @@ def gradint_descent(X, Y, epochs, learning_rate, num_layers, output_val, activat
 
     return weights, biases
 
-def soft_max(z):
+def soft_max(z: np.ndarray) -> np.ndarray:
     return np.exp(z) / sum(np.exp(z))
 
-def soft_max_derivative(z):
+def soft_max_derivative(z: np.ndarray) -> np.ndarray:
     return soft_max(z) * (1 - soft_max(z))
 
-def ReLU(z):
+def ReLU(z: np.ndarray) -> np.ndarray:
     return np.maximum(0, z)
 
-def ReLU_derivative(z):
+def ReLU_derivative(z: np.ndarray) -> np.ndarray:
     return np.where(z > 0, 1, 0)
 
 data = pd.read_csv(r'.\test_data\train.csv')
@@ -158,4 +197,14 @@ X_train = data_train[1:n]
 X_train = X_train / 255.
 _,m_train = X_train.shape
 
-W, B = gradint_descent(X=X_train, Y=Y_train, epochs=500, learning_rate=0.1, num_layers=[784, 15, 10], output_val=10, activation_functions=[ReLU, ReLU], activation_derivatives=[ReLU_derivative, ReLU_derivative], output_function=soft_max, function_error=FunctionError.CROSS_ENTROPY, use_softmax=True)
+W, B = gradint_descent(X=X_train, 
+                       Y=Y_train, 
+                       epochs=500, 
+                       learning_rate=0.1, 
+                       neurons_per_layer=[784, 15, 10],
+                       output_val=10, 
+                       activation_functions=[ReLU, ReLU], 
+                       activation_derivatives=[ReLU_derivative, ReLU_derivative], 
+                       output_function=soft_max, 
+                       function_error=FunctionError.CROSS_ENTROPY, 
+                       use_softmax=True)
