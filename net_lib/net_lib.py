@@ -125,7 +125,9 @@ def back_prop(
     biases: List[np.ndarray], 
     activation_functions: List[Callable[[np.ndarray], np.ndarray]],
     activation_derivatives: List[Callable[[np.ndarray], np.ndarray]],
-    function_error: FunctionError, 
+    function_error: FunctionError,
+    output_function: Callable[[np.ndarray], np.ndarray],
+    output_derivative: Callable[[np.ndarray], np.ndarray],
     use_softmax: bool
 ) -> Tuple[List[np.ndarray], List[np.ndarray]]:
     m = y.shape[0]
@@ -143,6 +145,12 @@ def back_prop(
             dZ = a[-1] - one_hot_y
         else:
             dZ = derivatie_cross_entropy(one_hot_y, a[-1])
+
+    if use_softmax is not False or function_error == FunctionError.MSE:
+        if output_derivative is not None:
+            dZ = dZ * output_derivative(z[-1])
+        else:
+            dZ = dZ * function_derivative(output_function, z[-1])
 
     # Output layer gradients
     dW[-1] = (1/m) * np.dot(dZ, a[-2].T)
@@ -188,6 +196,7 @@ def gradint_descent(
     activation_functions: List[Callable[[np.ndarray], np.ndarray]],
     activation_derivatives: List[Callable[[np.ndarray], np.ndarray]],
     output_function: Callable[[np.ndarray], np.ndarray],
+    output_derivative: Callable[[np.ndarray], np.ndarray],
     function_error: FunctionError, 
     use_softmax: bool
 )-> Tuple[List[np.ndarray], List[np.ndarray]]:
@@ -207,6 +216,8 @@ def gradint_descent(
                            activation_functions=activation_functions, 
                            activation_derivatives=activation_derivatives, 
                            function_error=function_error, 
+                           output_function=output_function,
+                           output_derivative=output_derivative,
                            use_softmax=use_softmax)
         weights, biases = update_params(
             weights=weights, 
@@ -244,5 +255,6 @@ W, B = gradint_descent(X=X_train,
                        activation_functions=[ReLU], 
                        activation_derivatives=[ReLU_derivative], 
                        output_function=soft_max, 
+                       output_derivative=soft_max_derivative,
                        function_error=FunctionError.CROSS_ENTROPY, 
                        use_softmax=True)
