@@ -29,9 +29,9 @@ def function_derivative(
 
 # Derivative of the cross entropy loss function
 def derivatie_cross_entropy(y_true: np.ndarray, y_pred: np.ndarray) -> np.ndarray:
-    m = y_true.shape[1]
-    loss = -np.sum(y_true * np.log(y_pred + 1e-9)) / m  # Aggiunto 1e-9 per la stabilità numerica
-    return loss
+    epsilon = 1e-15
+    y_pred = np.clip(y_pred, epsilon, 1 - epsilon)
+    return - (y_true / y_pred) + (1 - y_true) / (1 - y_pred)
 
 # Derivative of the mean squared error loss function
 def derivative_mse(y_true: np.ndarray, y_pred: np.ndarray) -> np.ndarray:
@@ -148,9 +148,9 @@ def back_prop(
 
     if use_softmax is not False or function_error == FunctionError.MSE:
         if output_derivative is not None:
-            dZ = dZ * output_derivative(z[-1])
+            dZ = dZ * output_derivative(a[-1])
         else:
-            dZ = dZ * function_derivative(output_function, z[-1])
+            dZ = dZ * function_derivative(output_function, a[-1])
 
     # Output layer gradients
     dW[-1] = (1/m) * np.dot(dZ, a[-2].T)
@@ -246,15 +246,21 @@ X_train = data_train[1:n]
 X_train = X_train / 255.
 _,m_train = X_train.shape
 
+neurons_per_layer = [784, 128, 64, 10]
+activation_functions = [ReLU, ReLU, ReLU]
+activation_derivatives = [ReLU_derivative, ReLU_derivative, ReLU_derivative]
+learning_rate = 0.001
+epochs = 500
+
 W, B = gradint_descent(X=X_train, 
                        Y=Y_train, 
-                       epochs=500, 
-                       learning_rate=0.1, 
-                       neurons_per_layer=[784, 10],
+                       epochs=epochs, 
+                       learning_rate=learning_rate, 
+                       neurons_per_layer=neurons_per_layer,
                        output_val=10, 
-                       activation_functions=[ReLU], 
-                       activation_derivatives=[ReLU_derivative], 
-                       output_function=soft_max, 
-                       output_derivative=soft_max_derivative,
-                       function_error=FunctionError.CROSS_ENTROPY, 
-                       use_softmax=True)
+                       activation_functions=activation_functions, 
+                       activation_derivatives=activation_derivatives, 
+                       output_function=lambda x: x, 
+                       output_derivative=lambda x: 1,
+                       function_error=FunctionError.MSE, 
+                       use_softmax=False)
