@@ -66,7 +66,7 @@ def get_accuracy(predictions: np.ndarray, y: np.ndarray) -> float:
 ############################################
 # Neural Network functions
 # Initialize weights and biases
-def init_params(neurons_per_layer: List[int], output_val: int) -> Tuple[List[np.ndarray], List[np.ndarray]]:
+def init_params(neurons_per_layer: List[int]) -> Tuple[List[np.ndarray], List[np.ndarray]]:
     if len(neurons_per_layer) < 2:
         raise ValueError("Number of layers must be at least 2")
     
@@ -82,9 +82,10 @@ def init_params(neurons_per_layer: List[int], output_val: int) -> Tuple[List[np.
     for i in range(1, len(neurons_per_layer) - 1):
         weights[i] = np.random.rand(neurons_per_layer[i], neurons_per_layer[i - 1]) - 0.5
         biases[i] = np.random.rand(neurons_per_layer[i], 1) - 0.5
-        
-    weights[-1] = np.random.rand(output_val, neurons_per_layer[-2]) - 0.5
-    biases[-1] = np.random.rand(output_val, 1) - 0.5
+    
+    # Output layer
+    weights[-1] = np.random.rand(neurons_per_layer[-1], neurons_per_layer[-2]) - 0.5
+    biases[-1] = np.random.rand(neurons_per_layer[-1], 1) - 0.5
 
     return weights, biases
 
@@ -146,7 +147,7 @@ def back_prop(
         else:
             dZ = derivatie_cross_entropy(one_hot_y, a[-1])
 
-    if use_softmax is not False or function_error == FunctionError.MSE:
+    if function_error == FunctionError.MSE or (function_error == FunctionError.CROSS_ENTROPY and use_softmax is False):
         if output_derivative is not None:
             dZ = dZ * output_derivative(a[-1])
         else:
@@ -191,8 +192,7 @@ def gradint_descent(
     Y: np.ndarray, 
     epochs: int, 
     learning_rate: float, 
-    neurons_per_layer: List[int], 
-    output_val: int, 
+    neurons_per_layer: List[int],
     activation_functions: List[Callable[[np.ndarray], np.ndarray]],
     activation_derivatives: List[Callable[[np.ndarray], np.ndarray]],
     output_function: Callable[[np.ndarray], np.ndarray],
@@ -200,7 +200,7 @@ def gradint_descent(
     function_error: FunctionError, 
     use_softmax: bool
 )-> Tuple[List[np.ndarray], List[np.ndarray]]:
-    weights, biases = init_params(neurons_per_layer, output_val)
+    weights, biases = init_params(neurons_per_layer)
 
     for i in range(epochs):
         a, z = forward_prop(x=X, 
@@ -246,10 +246,12 @@ X_train = data_train[1:n]
 X_train = X_train / 255.
 _,m_train = X_train.shape
 
-neurons_per_layer = [784, 128, 64, 10]
-activation_functions = [ReLU, ReLU, ReLU]
-activation_derivatives = [ReLU_derivative, ReLU_derivative, ReLU_derivative]
-learning_rate = 0.001
+neurons_per_layer = [784, 10]
+activation_functions = [ReLU]
+activation_derivatives = [ReLU_derivative]
+output_function = soft_max
+output_derivative = soft_max_derivative
+learning_rate = 0.1
 epochs = 500
 
 W, B = gradint_descent(X=X_train, 
@@ -257,10 +259,9 @@ W, B = gradint_descent(X=X_train,
                        epochs=epochs, 
                        learning_rate=learning_rate, 
                        neurons_per_layer=neurons_per_layer,
-                       output_val=10, 
                        activation_functions=activation_functions, 
                        activation_derivatives=activation_derivatives, 
-                       output_function=lambda x: x, 
-                       output_derivative=lambda x: 1,
-                       function_error=FunctionError.MSE, 
-                       use_softmax=False)
+                       output_function=output_function, 
+                       output_derivative=output_derivative,
+                       function_error=FunctionError.CROSS_ENTROPY, 
+                       use_softmax=True)
