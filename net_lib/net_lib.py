@@ -89,6 +89,42 @@ def init_params(neurons_per_layer: List[int]) -> Tuple[List[np.ndarray], List[np
 
     return weights, biases
 
+def make_predictions(x: np.ndarray, 
+                        weights: List[np.ndarray], 
+                        biases: List[np.ndarray], 
+                        activation_functions: List[Callable[[np.ndarray], np.ndarray]], 
+                        output_function: Callable[[np.ndarray], np.ndarray]) -> np.ndarray:
+    a, _ = forward_prop(x=x, 
+                        weights=weights, 
+                        biases=biases, activation_functions=activation_functions, 
+                        output_function=output_function)
+    predictions = get_predictions(a[-1])
+    
+    return predictions
+
+def test_prediction(index: int,
+                    x: np.ndarray, 
+                    y: np.ndarray, 
+                    weights: List[np.ndarray], 
+                    biases: List[np.ndarray], 
+                    activation_functions: List[Callable[[np.ndarray], np.ndarray]], 
+                    output_function: Callable[[np.ndarray], np.ndarray]):
+    current_image = x[:, index, None]
+    prediction = make_predictions (x=x[:, index, None], 
+                                    weights=weights, 
+                                    biases=biases, 
+                                    activation_functions=activation_functions, 
+                                    output_function=output_function)
+    label = y[index]
+    print("Prediction: ", prediction)
+    print("Label: ", label)
+    
+    current_image = current_image.reshape((28, 28)) * 255
+    
+    plt.gray()
+    plt.imshow(current_image, interpolation='nearest')
+    plt.show()
+        
 # Forward propagation
 def forward_prop(
     x: np.ndarray, 
@@ -239,6 +275,7 @@ np.random.shuffle(data)
 data_dev = data[0: 1000].T
 Y_dev = data_dev[0]
 X_dev = data_dev[1: n]
+X_dev = X_dev / 255.
 
 data_train = data[1000: m].T
 Y_train = data_train[0]
@@ -265,3 +302,15 @@ W, B = gradint_descent(X=X_train,
                        output_derivative=output_derivative,
                        function_error=FunctionError.CROSS_ENTROPY, 
                        use_softmax=True)
+
+'''
+# Test the predictions
+
+test_prediction(0, X_train, Y_train, W, B, activation_functions, output_function)
+test_prediction(1, X_train, Y_train, W, B, activation_functions, output_function)
+test_prediction(2, X_train, Y_train, W, B, activation_functions, output_function)
+test_prediction(3, X_train, Y_train, W, B, activation_functions, output_function)
+
+dev_predictions = make_predictions(X_dev, W, B, activation_functions, output_function)
+print(get_accuracy(dev_predictions, Y_dev))
+'''
