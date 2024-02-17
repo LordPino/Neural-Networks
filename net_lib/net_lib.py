@@ -78,7 +78,7 @@ def init_params(neurons_per_layer: List[int]) -> Tuple[List[np.ndarray], List[np
     biases = [None] * (len(neurons_per_layer) - 1)
 
     # First layer 
-    weights[0] = np.random.rand(neurons_per_layer[1], neurons_per_layer[0])  - 0.5
+    weights[0] = np.random.rand(neurons_per_layer[1], neurons_per_layer[0]) - 0.5
     biases[0] = np.random.rand(neurons_per_layer[1], 1) - 0.5
 
     # Middle layers and output layer
@@ -221,7 +221,7 @@ def update_params(
 
     for i in range(len(weights)):
         new_weights[i] = weights[i] - learning_rate * dW[i]
-        new_biases[i] = biases[i] - learning_rate * dB[len(biases) - 1 - i]
+        new_biases[i] = biases[i] - learning_rate * dB[i]
 
     return new_weights, new_biases
 
