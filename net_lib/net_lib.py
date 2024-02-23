@@ -291,15 +291,15 @@ output_derivative = soft_max_derivative
 learning_rate = 0.1
 epochs = 500
 
-W, B = gradint_descent(X=X_train, 
-                       Y=Y_train, 
-                       epochs=epochs, 
-                       learning_rate=learning_rate, 
-                       neurons_per_layer=neurons_per_layer,
-                       activation_functions=activation_functions, 
-                       activation_derivatives=activation_derivatives, 
-                       output_function=output_function, 
-                       output_derivative=output_derivative,
+W, B = gradint_descent(X=X_train, # Network.train
+                       Y=Y_train, # Network.train
+                       epochs=epochs, # Network.train
+                       learning_rate=learning_rate,  # Network 
+                       neurons_per_layer=neurons_per_layer, # Layer
+                       activation_functions=activation_functions, # Input & Middle Layer
+                       activation_derivatives=activation_derivatives, # Input & Middle Layer
+                       output_function=output_function, # Output Layer 
+                       output_derivative=output_derivative, # Output Layer
                        function_error=FunctionError.CROSS_ENTROPY, 
                        use_softmax=True)
 

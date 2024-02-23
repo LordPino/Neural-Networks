@@ -47,7 +47,10 @@ class Network:
         output_layer.set_weight(np.random.rand(output_layer.get_neurons(), self._layers[-2].get_neurons()) - 0.5)
         output_layer.set_bias(np.random.rand(output_layer.get_neurons(), 1) - 0.5)
 
-    def gradint_descent(self, X: np.ndarray, Y: np.ndarray):
+    def train(self):
+        pass
+
+    def _gradint_descent(self, X: np.ndarray, Y: np.ndarray):
         self.init_layers()
 
         for i in range(self._epochs):

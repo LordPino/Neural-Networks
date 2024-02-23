@@ -1,22 +1,34 @@
+import numpy as np
+from typing import Callable
+
 
 class Layer:
-    def __init__(self, neurons: int, activation_function: list):
+    def __init__(self, neurons: int, activation_function: list[Callable[[np.ndarray], np.ndarray]]):
         self._neurons = neurons
         self.activation_function = activation_function
-        self._weight = None
-        self._bias = None
+        self._weights = []
+        self._biases = []
 
     def get_neurons(self) -> int:
         return self._neurons
 
-    def get_weight(self) -> int:
-        return self._weight
+    def get_weights(self) -> list[int]:
+        return self._weights
     
-    def set_weight(self, weight: float):
-        self._weight = weight
+    def set_weights(self, weights: list[float]):
+        self._weights = weights
 
-    def get_bias(self) -> int:
-        return self._bias
+    def get_biases(self) -> list[int]:
+        return self._biases
     
-    def set_bias(self, bias: float):
-        self._bias = bias
+    def set_bias(self, biases: list[float]):
+        self._biases = biases
+
+    def get_activation_function(self) -> 
+
+class OutputLayer(Layer):
+    def __init__(self, neurons: int, output_function):
+        super.__init__(neurons, output_function)
+    
+    def get_output_function(self):
+        return self.activation_function
