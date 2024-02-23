@@ -3,8 +3,6 @@ from enum import Enum
 from library.layer import Layer, OutputLayer
 import numpy as np
 from typing import List, Tuple
-from library.train_result import TrainResult
-from library.types import ActivationFunction, OutputFunction
 
 from library.utils import derivatie_cross_entropy, derivative_mse, function_derivative, get_accuracy, get_predictions, one_hot
 
@@ -13,44 +11,40 @@ class FunctionError(Enum):
     CROSS_ENTROPY = 2 # Cross Entropy Loss
 
 class Network:
-    def __init__(self, epochs: int):
+    def __init__(self):
+        self._X = None
+        self._Y = None
         self._layers = list[Layer]()
-        self._output_layer = None
-        self._output_function = None
-        self._epochs = epochs
+        self._epochs = None
         self._use_rprop = False
         self._use_softmax = False
         self._error_function = None
         self._learning_rate = 0.1
+        self._output_layer = None
         pass
-    
-    def train(self, X: np.ndarray, Y: np.ndarray) -> TrainResult:
-        W, B = self._gradint_descent(X=X, Y=Y)
-
-        return TrainResult(
-            x_train=X,
-            y_train=Y,
-            w=W,
-            b=B,
-            activation_functions=[l.get_activation_function() for l in self._layers],
-            output_function=self.get_output_layer().get_output_function()
-        )
-
-
-
-    def make_predictions(self, x: np.ndarray) -> np.ndarray:
-        a, _ = self._forward_propagation(x=x)
-        return get_predictions(a[-1])
 
     def is_valid(self):
-        return len(self._layers) < 2
-        
+        return len(self._layers) >= 1 and self._output_layer is not None and self._epochs is not None and self._X is not None and self._Y is not None
+    
+    def x(self, x: np.ndarray):
+        self._X = x
+        return self
+
+    def y(self, y: np.ndarray):
+        self._Y = y
+        return self
+
+    def epochs(self, epochs: int):
+        self._epochs = epochs
+        return self
+
     def add_layer(self, layer: Layer):
-        if(layer is OutputLayer):
-            if(self._layers[-1] is OutputLayer):
+        if(isinstance(layer, OutputLayer)):
+            if(self._output_layer is not None):
                 raise ValueError('[Network]: Cannot add an Output Layer twice.')
-            
-        self._layers.append(layer)
+            self._output_layer = layer
+        else:
+            self._layers.append(layer)
         return self
 
     def remove_layer(self, index: int) -> Layer:
@@ -58,6 +52,11 @@ class Network:
             raise ValueError("[Network]: Layer index out of bounds.")
         layer = self._layers[index]
         del self._layers[index]
+        return layer
+
+    def remove_output_layer(self) -> OutputLayer:
+        layer = self._output_layer
+        self._output_layer = None
         return layer
 
     def error_function(self, error: FunctionError):
@@ -86,14 +85,10 @@ class Network:
         return self._use_softmax
 
     def get_output_layer(self) -> OutputLayer:
-        if not self.is_valid():
-            raise ValueError("[Network]: number of layers must be atleast 2.")
-        last_layer = self._layers[-1]
-
-        if(last_layer is not OutputLayer):
+        if(self._output_layer is None):
             raise ValueError("[Network]: There's no Output layer.")
 
-        return last_layer
+        return self._output_layer
 
     def get_num_layers(self) -> int:
         return len(self._layers)
@@ -104,8 +99,8 @@ class Network:
             raise ValueError("[Network]: number of layers must be atleast 2.")
         
         first_layer = self._layers[0]
-        first_layer.set_weights(np.random.rand(self._layers[1].get_neurons(), first_layer.get_neurons())  - 0.5) 
-        first_layer.set_biases(np.random.rand(self._layers[1].get_neurons(), 1) - 0.5)
+        first_layer.set_weights(np.random.rand(self.get_output_layer().get_neurons(), first_layer.get_neurons())  - 0.5) 
+        first_layer.set_biases(np.random.rand(self.get_output_layer().get_neurons(), 1) - 0.5)
 
         # Middle layers and output layer
         for i in range(1, len(self._layers) - 1):
@@ -115,15 +110,14 @@ class Network:
             layer.set_biases(np.random.rand(layer.get_neurons(), 1) - 0.5)
         
         # Output layer
-        output_layer = self.get_output_layer()
-        output_layer.set_weights(np.random.rand(output_layer.get_neurons(), self._layers[-2].get_neurons()) - 0.5)
-        output_layer.set_biases(np.random.rand(output_layer.get_neurons(), 1) - 0.5)
+        self._layers[-1].set_weights(np.random.rand(self.get_output_layer().get_neurons(), self._layers[-1].get_neurons()) - 0.5)
+        self._layers[-1].set_biases(np.random.rand(self.get_output_layer().get_neurons(), 1) - 0.5)
 
     def _gradint_descent(self, X: np.ndarray, Y: np.ndarray):
         self.init_layers()
 
         if self._use_rprop:
-            step_sizes_weights, step_sizes_biases, prev_grad_weights, prev_grad_biases = self._init_rprop_params(weights=weights, biases=biases)
+            step_sizes_weights, step_sizes_biases, prev_grad_weights, prev_grad_biases = self._init_rprop_params()
 
         
         for i in range(self._epochs):
@@ -132,31 +126,31 @@ class Network:
 
             
             if self._use_rprop:
-                weights, biases, prev_grad_weights, prev_grad_biases, step_sizes_weights, step_sizes_biases = self._rprop_update(weights=weights, 
-                                                                                                                       biases=biases, 
-                                                                                                                       grad_weights=dW,
-                                                                                                                       grad_biases=dB,
-                                                                                                                       step_sizes_weights=step_sizes_weights, 
-                                                                                                                       step_sizes_biases=step_sizes_biases, 
-                                                                                                                       prev_grad_weights=prev_grad_weights, 
-                                                                                                                       prev_grad_biases=prev_grad_biases)
+                prev_grad_weights, prev_grad_biases, step_sizes_weights, step_sizes_biases = self._rprop_update(
+                                                                                                                grad_weights=dW,
+                                                                                                                grad_biases=dB,
+                                                                                                                step_sizes_weights=step_sizes_weights, 
+                                                                                                                step_sizes_biases=step_sizes_biases, 
+                                                                                                                prev_grad_weights=prev_grad_weights, 
+                                                                                                                prev_grad_biases=prev_grad_biases
+                )
             else:
-                weights, biases = self._update_params(weights=weights, 
-                    biases=biases, 
+                self._update_params(
                     dW=dW, 
-                    dB=dB)
+                    dB=dB
+                )
             
             if i % 10 == 0:
                 print("epoch: ", i)
                 print("Accuracy: ", get_accuracy(get_predictions(a[-1]), Y))
-        return weights, biases
+        pass
 
     def _forward_propagation(self, x: np.ndarray) -> Tuple[list[np.ndarray], list[np.ndarray]]: 
         num_layers = self.get_num_layers()
 
         # Preallocate lists for z and a with the appropriate sizes
-        z = [] * num_layers
-        a = [] * (num_layers + 1)  # +1 for the input layer
+        z = [None] * num_layers
+        a = [None] * (num_layers + 1)  # +1 for the input layer
 
         a[0] = x
 
@@ -165,12 +159,12 @@ class Network:
             layer = self._layers[i]
 
             z[i] = np.dot(layer.get_weights(), a[i]) + layer.get_biases()
-            a[i + 1] = layer.get_activation_function(z[i])
+            a[i + 1] = layer.get_activation_function()(z[i])
 
         # Handle the output layer separately
-        output_layer = self.get_output_layer()
+        output_layer = self._layers[-1]
         z[-1] = np.dot(output_layer.get_weights(), a[-2]) + output_layer.get_biases()
-        a[-1] = output_layer.get_output_function(z[-1])
+        a[-1] = self.get_output_layer().get_output_function()(z[-1])
 
         return a, z
 
@@ -178,11 +172,9 @@ class Network:
         m = y.shape[0]
         one_hot_y = one_hot(y)
 
-        
-        weights = [l.get_weights() for l in self._layers]
-        biases = [l.get_biases() for l in self._layers]
-        dW = [] * len(weights)
-        dB = [] * len(biases)
+        # Init gradients
+        dW = [None] * self.get_num_layers()
+        dB = [None] * self.get_num_layers()
 
         # Output layer error
         if self._error_function == FunctionError.MSE:
@@ -206,22 +198,28 @@ class Network:
         dB[-1] = (1/m) * np.sum(dZ)
         
         # Backpropagation through layers
-        for i in range(len(weights) - 2, -1, -1):
-            dA = np.dot(weights[i + 1].T, dZ)
+        for i in range(self.get_num_layers() - 2, -1, -1):
             layer = self._layers[i]
+            next_layer = self._layers[i+1]
+
+            dA = np.dot(next_layer.get_weights().T, dZ)
+
             if layer.get_activation_derivate() is not None:
                 dZ = dA * layer.get_activation_derivate()(z[i])
             else:
                 dZ = dA * function_derivative(layer.get_activation_function(), z[i])
+            
             dW[i] = (1/m) * np.dot(dZ, a[i].T)
             dB[i] = (1/m) * np.sum(dZ)
 
         return dW, dB
     
     # Init step sizes and gradients for rporp
-    def _init_rprop_params(self, weights: List[np.ndarray], 
-                        biases: List[np.ndarray]
+    def _init_rprop_params(
+        self,
     ) -> Tuple[List[np.ndarray], List[np.ndarray], List[np.ndarray], List[np.ndarray]]:
+        weights = [l.get_weights() for l in self._layers]
+        biases = [l.get_biases() for l in self._layers]
         step_sizes_weights = [0.1 * np.ones_like(w) for w in weights]
         step_sizes_biases = [0.1 * np.ones_like(b) for b in biases]
 
@@ -232,8 +230,8 @@ class Network:
         return step_sizes_weights, step_sizes_biases, prev_grad_weights, prev_grad_biases
 
     # Rprop update weights and biases
-    def _rprop_update(self, weights: List[np.ndarray], 
-                    biases: List[np.ndarray], 
+    def _rprop_update(
+                    self,
                     grad_weights: List[np.ndarray], 
                     grad_biases: List[np.ndarray], 
                     step_sizes_weights: List[np.ndarray], 
@@ -246,17 +244,19 @@ class Network:
         max_step = 50.0
         min_step = 1e-6
         
-        new_weights = []
-        new_biases = []
-        
-        for i in range(len(weights)):
+        for i in range(self.get_num_layers()):
+            layer = self._layers[i]
+            weights = layer.get_weights()
+            biases = layer.get_biases()
+
             # Weight updates
             change_w = np.sign(grad_weights[i] * prev_grad_weights[i])
             step_sizes_weights[i] = np.where(change_w > 0, np.minimum(step_sizes_weights[i] * eta_plus, max_step),
                                             np.where(change_w < 0, np.maximum(step_sizes_weights[i] * eta_minus, min_step),
                                                     step_sizes_weights[i]))
             weight_update = -np.sign(grad_weights[i]) * step_sizes_weights[i]
-            weights[i] += weight_update
+            
+            weights += weight_update
             prev_grad_weights[i] = np.where(change_w < 0, 0, grad_weights[i])
             
             # Bias updates
@@ -265,26 +265,27 @@ class Network:
                                             np.where(change_b < 0, np.maximum(step_sizes_biases[i] * eta_minus, min_step),
                                                     step_sizes_biases[i]))
             bias_update = -np.sign(grad_biases[i]) * step_sizes_biases[i]
-            biases[i] += bias_update
+            biases += bias_update
             prev_grad_biases[i] = np.where(change_b < 0, 0, grad_biases[i])
-            
-            new_weights.append(weights[i])
-            new_biases.append(biases[i])
         
-        return new_weights, new_biases, prev_grad_weights, prev_grad_biases, step_sizes_weights, step_sizes_biases
+        return prev_grad_weights, prev_grad_biases, step_sizes_weights, step_sizes_biases
 
     def _update_params(
         self,
-        weights: List[np.ndarray], 
-        biases: List[np.ndarray], 
         dW: List[np.ndarray], 
         dB: List[np.ndarray], 
-    ) -> Tuple[List[np.ndarray], List[np.ndarray]]:
-        new_weights = [] * len(weights)
-        new_biases = [] * len(biases)
+    ):
 
-        for i in range(len(weights)):
-            new_weights[i] = weights[i] - self._learning_rate * dW[i]
-            new_biases[i] = biases[i] - self._learning_rate * dB[i]
+        for i in range(self.get_num_layers()):
+            layer = self._layers[i]
+            layer.set_weights(layer.get_weights() - self._learning_rate * dW[i])
+            layer.set_biases(layer.get_biases() - self._learning_rate * dB[i])
+        pass
+    
+    def train(self):
+        self._gradint_descent(X=self._X, Y=self._Y)
+        pass
 
-        return new_weights, new_biases
+    def make_predictions(self, x: np.ndarray) -> np.ndarray:
+        a, _ = self._forward_propagation(x=x)
+        return get_predictions(a[-1])

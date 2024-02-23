@@ -1,5 +1,4 @@
 import numpy as np
-from typing import Callable, List
 
 from library.types import ActivationDerivate, ActivationFunction, OutputDerivate, OutputFunction
 
@@ -36,7 +35,7 @@ class Layer:
 
 class OutputLayer(Layer):
     def __init__(self, neurons: int, output_function: OutputFunction, output_derivate: OutputDerivate):
-        super.__init__(neurons, output_function, output_derivate)
+        super().__init__(neurons, output_function, output_derivate)
     
     def get_output_function(self):
         return self.get_activation_function()

@@ -4,30 +4,27 @@ import numpy as np
 import pandas as pd
 from library.layer import Layer, OutputLayer
 from library.network import FunctionError, Network
-from library.train_result import TrainResult
-from library.types import ActivationFunction, OutputFunction
-from library.utils import ReLU, ReLU_derivative, soft_max, soft_max_derivative
+from library.utils import ReLU, ReLU_derivative, get_accuracy, soft_max, soft_max_derivative
+from matplotlib import pyplot as plt
 
-def test_prediction(self,
-                        index: int,
-                        x: np.ndarray, 
-                        y: np.ndarray,
-                        ):
-        range = x[:, index, None]
-        current_image = range
-        prediction = self.make_predictions(x=range)
-        label = y[index]
+def test_prediction(
+                    index: int,
+                    x: np.ndarray, 
+                    y: np.ndarray, 
+                    network: Network):
+    current_image = x[:, index, None]
+    prediction = network.make_predictions(x=x[:, index, None])
+    label = y[index]
+    print("Prediction: ", prediction)
+    print("Label: ", label)
+    
+    current_image = current_image.reshape((28, 28)) * 255
+    
+    plt.gray()
+    plt.imshow(current_image, interpolation='nearest')
+    plt.show()
 
-        print("Prediction: ", prediction)
-        print("Label: ", label)
-        
-        current_image = current_image.reshape((28, 28)) * 255
-        
-        plt.gray()
-        plt.imshow(current_image, interpolation='nearest')
-        plt.show()
-
-data = pd.read_csv(r'.\test_data\train.csv')
+data = pd.read_csv(r'.\\train.csv')
 data = np.array(data)
 m, n = data.shape
 np.random.shuffle(data)
@@ -39,17 +36,12 @@ X_dev = X_dev / 255.
 
 data_train = data[1000: m].T
 Y_train = data_train[0]
-X_train = data_train[1:n]
-X_train = X_train / 255.
-_,m_train = X_train.shape
+X_train = data_train[1:n] / 255.
 
-neurons_per_layer = [784, 10]
-activation_functions = [ReLU]
-activation_derivatives = [ReLU_derivative]
-output_function = soft_max
-output_derivative = soft_max_derivative
-
-network = Network(epochs=500)
+network = Network()
+network.x(X_train)
+network.y(Y_train)
+network.epochs(500)
 network.learning_rate(0.1)
 network.error_function(FunctionError.CROSS_ENTROPY)
 network.use_rprop(True)
@@ -57,5 +49,12 @@ network.use_softmax(True)
 network.add_layer(Layer(784, activation_function=ReLU, activation_derivate=ReLU_derivative))
 network.add_layer(OutputLayer(10, output_function=soft_max, output_derivate=soft_max_derivative))
 
-train_result = network.train(X=X_train, Y=Y_train)
+network.train()
 
+test_prediction(0, X_train, Y_train, network=network)
+test_prediction(1, X_train, Y_train, network=network)
+test_prediction(2, X_train, Y_train, network=network)
+test_prediction(3, X_train, Y_train, network=network)
+
+dev_predictions = network.make_predictions(X_dev)
+print(get_accuracy(dev_predictions, Y_dev))
