@@ -1,6 +1,7 @@
 import numpy as np
-from typing import Callable
+from typing import Callable, List
 
+ActivationFunction = Callable[[np.ndarray], np.ndarray]
 
 class Layer:
     def __init__(self, neurons: int, activation_function: list[Callable[[np.ndarray], np.ndarray]]):
@@ -24,7 +25,8 @@ class Layer:
     def set_bias(self, biases: list[float]):
         self._biases = biases
 
-    def get_activation_function(self) -> 
+    def get_activation_function(self) -> ActivationFunction:
+        return self.activation_function
 
 class OutputLayer(Layer):
     def __init__(self, neurons: int, output_function):
