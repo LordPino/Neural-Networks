@@ -3,8 +3,9 @@ from enum import Enum
 from library.layer import Layer, OutputLayer
 import numpy as np
 from typing import List, Tuple
+from library.train_result import TrainResult
+from library.types import ActivationFunction, OutputFunction
 
-from library.rprop_params import RPropParams
 from library.utils import derivatie_cross_entropy, derivative_mse, function_derivative, get_accuracy, get_predictions, one_hot
 
 class FunctionError(Enum):
@@ -22,6 +23,24 @@ class Network:
         self._error_function = None
         self._learning_rate = 0.1
         pass
+    
+    def train(self, X: np.ndarray, Y: np.ndarray) -> TrainResult:
+        W, B = self._gradint_descent(X=X, Y=Y)
+
+        return TrainResult(
+            x_train=X,
+            y_train=Y,
+            w=W,
+            b=B,
+            activation_functions=[l.get_activation_function() for l in self._layers],
+            output_function=self.get_output_layer().get_output_function()
+        )
+
+
+
+    def make_predictions(self, x: np.ndarray) -> np.ndarray:
+        a, _ = self._forward_propagation(x=x)
+        return get_predictions(a[-1])
 
     def is_valid(self):
         return len(self._layers) < 2
@@ -99,10 +118,6 @@ class Network:
         output_layer = self.get_output_layer()
         output_layer.set_weights(np.random.rand(output_layer.get_neurons(), self._layers[-2].get_neurons()) - 0.5)
         output_layer.set_biases(np.random.rand(output_layer.get_neurons(), 1) - 0.5)
-
-    def train(self, X: np.ndarray, Y: np.ndarray):
-        W, B = self._gradint_descent(X=X, Y=Y)
-        pass
 
     def _gradint_descent(self, X: np.ndarray, Y: np.ndarray):
         self.init_layers()
