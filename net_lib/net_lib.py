@@ -39,7 +39,10 @@ def derivative_mse(y_true: np.ndarray, y_pred: np.ndarray) -> np.ndarray:
 
 # Softmax function
 def soft_max(z: np.ndarray) -> np.ndarray:
-    return np.exp(z) / sum(np.exp(z))
+    # Shift z by subtracting its max value from all elements
+    shift_z = z - np.max(z, axis=0, keepdims=True)
+    exp_z = np.exp(shift_z)
+    return exp_z / np.sum(exp_z, axis=0, keepdims=True)
 
 # Derivative of the softmax function
 def soft_max_derivative(z: np.ndarray) -> np.ndarray:
@@ -75,7 +78,7 @@ def init_params(neurons_per_layer: List[int]) -> Tuple[List[np.ndarray], List[np
     biases = [None] * (len(neurons_per_layer) - 1)
 
     # First layer 
-    weights[0] = np.random.rand(neurons_per_layer[1], neurons_per_layer[0])  - 0.5
+    weights[0] = np.random.rand(neurons_per_layer[1], neurons_per_layer[0]) - 0.5
     biases[0] = np.random.rand(neurons_per_layer[1], 1) - 0.5
 
     # Middle layers and output layer
@@ -218,9 +221,64 @@ def update_params(
 
     for i in range(len(weights)):
         new_weights[i] = weights[i] - learning_rate * dW[i]
-        new_biases[i] = biases[i] - learning_rate * dB[len(biases) - 1 - i]
+        new_biases[i] = biases[i] - learning_rate * dB[i]
 
     return new_weights, new_biases
+
+# Init step sizes and gradients for rporp
+def init_rprop_params(weights: List[np.ndarray], 
+                      biases: List[np.ndarray]
+) -> Tuple[List[np.ndarray], List[np.ndarray], List[np.ndarray], List[np.ndarray]]:
+    step_sizes_weights = [0.1 * np.ones_like(w) for w in weights]
+    step_sizes_biases = [0.1 * np.ones_like(b) for b in biases]
+
+    # Initialize previous gradients to zero (for weights and biases)
+    prev_grad_weights = [np.zeros_like(w) for w in weights]
+    prev_grad_biases = [np.zeros_like(b) for b in biases]
+    
+    return step_sizes_weights, step_sizes_biases, prev_grad_weights, prev_grad_biases
+
+# Rprop update weights and biases
+def rprop_update(weights: List[np.ndarray], 
+                 biases: List[np.ndarray], 
+                 grad_weights: List[np.ndarray], 
+                 grad_biases: List[np.ndarray], 
+                 step_sizes_weights: List[np.ndarray], 
+                 step_sizes_biases: List[np.ndarray],
+                 prev_grad_weights: List[np.ndarray], 
+                 prev_grad_biases: List[np.ndarray]
+) -> Tuple[List[np.ndarray], List[np.ndarray], List[np.ndarray], List[np.ndarray]]:
+    eta_plus = 1.2
+    eta_minus = 0.5
+    max_step = 50.0
+    min_step = 1e-6
+    
+    new_weights = []
+    new_biases = []
+    
+    for i in range(len(weights)):
+        # Weight updates
+        change_w = np.sign(grad_weights[i] * prev_grad_weights[i])
+        step_sizes_weights[i] = np.where(change_w > 0, np.minimum(step_sizes_weights[i] * eta_plus, max_step),
+                                         np.where(change_w < 0, np.maximum(step_sizes_weights[i] * eta_minus, min_step),
+                                                  step_sizes_weights[i]))
+        weight_update = -np.sign(grad_weights[i]) * step_sizes_weights[i]
+        weights[i] += weight_update
+        prev_grad_weights[i] = np.where(change_w < 0, 0, grad_weights[i])
+        
+        # Bias updates
+        change_b = np.sign(grad_biases[i] * prev_grad_biases[i])
+        step_sizes_biases[i] = np.where(change_b > 0, np.minimum(step_sizes_biases[i] * eta_plus, max_step),
+                                        np.where(change_b < 0, np.maximum(step_sizes_biases[i] * eta_minus, min_step),
+                                                 step_sizes_biases[i]))
+        bias_update = -np.sign(grad_biases[i]) * step_sizes_biases[i]
+        biases[i] += bias_update
+        prev_grad_biases[i] = np.where(change_b < 0, 0, grad_biases[i])
+        
+        new_weights.append(weights[i])
+        new_biases.append(biases[i])
+    
+    return new_weights, new_biases, prev_grad_weights, prev_grad_biases, step_sizes_weights, step_sizes_biases
 
 # Gradient descent
 def gradint_descent(
@@ -234,10 +292,13 @@ def gradint_descent(
     output_function: Callable[[np.ndarray], np.ndarray],
     output_derivative: Callable[[np.ndarray], np.ndarray],
     function_error: FunctionError, 
-    use_softmax: bool
+    use_softmax: bool,
+    use_rprop: bool
 )-> Tuple[List[np.ndarray], List[np.ndarray]]:
     weights, biases = init_params(neurons_per_layer)
-
+    if use_rprop:
+        step_sizes_weights, step_sizes_biases, prev_grad_weights, prev_grad_biases = init_rprop_params(weights=weights, biases=biases)
+        
     for i in range(epochs):
         a, z = forward_prop(x=X, 
                             weights=weights, 
@@ -255,12 +316,22 @@ def gradint_descent(
                            output_function=output_function,
                            output_derivative=output_derivative,
                            use_softmax=use_softmax)
-        weights, biases = update_params(
-            weights=weights, 
-            biases=biases, 
-            dW=dW, 
-            dB=dB, 
-            learning_rate=learning_rate)
+        if use_rprop:
+            weights, biases, prev_grad_weights, prev_grad_biases, step_sizes_weights, step_sizes_biases = rprop_update(weights=weights, 
+                                                                                                                       biases=biases, 
+                                                                                                                       grad_weights=dW,
+                                                                                                                       grad_biases=dB,
+                                                                                                                       step_sizes_weights=step_sizes_weights, 
+                                                                                                                       step_sizes_biases=step_sizes_biases, 
+                                                                                                                       prev_grad_weights=prev_grad_weights, 
+                                                                                                                       prev_grad_biases=prev_grad_biases)
+        else:
+            weights, biases = update_params(
+                weights=weights, 
+                biases=biases, 
+                dW=dW, 
+                dB=dB, 
+                learning_rate=learning_rate)
         if i % 10 == 0:
             print("epoch: ", i)
             print("Accuracy: ", get_accuracy(get_predictions(a[-1]), Y))
@@ -301,9 +372,10 @@ W, B = gradint_descent(X=X_train, # Network.train
                        output_function=output_function, # Output Layer 
                        output_derivative=output_derivative, # Output Layer
                        function_error=FunctionError.CROSS_ENTROPY, 
-                       use_softmax=True)
+                       use_softmax=True,
+                       use_rprop=True)
 
-'''
+
 # Test the predictions
 
 test_prediction(0, X_train, Y_train, W, B, activation_functions, output_function)
@@ -313,4 +385,3 @@ test_prediction(3, X_train, Y_train, W, B, activation_functions, output_function
 
 dev_predictions = make_predictions(X_dev, W, B, activation_functions, output_function)
 print(get_accuracy(dev_predictions, Y_dev))
-'''
