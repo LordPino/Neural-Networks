@@ -15,6 +15,6 @@ network = Network()
 layer1 = Layer(neurons=784, activation_function=ReLU, activation_derivate=ReLU_derivative)
 layer2 = OutputLayer(neurons=10, utput_function=soft_max, output_derivate=soft_max_derivative)
 
-network.use_rprop(True).use_softmax(True).error_function(FunctionError.MSE).add_layer(layer1).add_layer(layer2)
+network.use_rprop(True).use_softmax(True).learning_rate(0.1).error_function(FunctionError.MSE).add_layer(layer1).add_layer(layer2)
 
-network.train()
+result = network.train()
