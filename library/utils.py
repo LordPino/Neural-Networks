@@ -52,5 +52,4 @@ def get_predictions(a: np.ndarray) -> np.ndarray:
 
 # Accuracy function
 def get_accuracy(predictions: np.ndarray, y: np.ndarray) -> float:
-    print(predictions, y)
     return np.sum(predictions == y) / y.size
