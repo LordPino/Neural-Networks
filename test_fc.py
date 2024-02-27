@@ -1,4 +1,6 @@
+from typing import List
 from keras.datasets import mnist
+from matplotlib import pyplot as plt
 import numpy as np
 from library.activations import ReLU, Sigmoid, Softmax
 from library.conv_dense import ConvDense
@@ -6,9 +8,21 @@ from library.dense import Dense
 
 from library.layer import Layer
 from library.network import predict, train
-from library.utils import cross_entropy_loss, derivatie_cross_entropy, flatten_list
+from library.utils import cross_entropy_loss, derivatie_cross_entropy, flatten_list, get_accuracy, get_predictions
 from keras.utils import to_categorical
 
+#make predictions
+def make_predictions(x: np.ndarray, network: List[Layer]) -> np.ndarray:
+    
+    outputs = []
+    for image in x:
+        o = predict(network, image)
+        outputs.append(o)
+    
+    outputs = np.array(outputs)
+    
+    return get_predictions(outputs)
+    
 def preprocess_data(x: np.ndarray, y: np.ndarray, limit: int = 60000):
     unique_classes = np.unique(y)  # Find the unique classes in y
     all_indices = []  # To store selected indices for all classes
@@ -26,11 +40,11 @@ def preprocess_data(x: np.ndarray, y: np.ndarray, limit: int = 60000):
     x_train = flatten_list(x)
     x_train = np.array(x_train)
     x_train = x_train.astype("float32") / 255
-    print(x_train.shape) # (60000, 169, 16)
+    #print(x_train.shape) # (60000, 169, 16)
     y_train = to_categorical(y, num_classes=10)  # One-hot encode y
     y_train = y_train.reshape(len(y), 10, 1)
     
-    print(y_train.shape) # (60000, 10, 1)
+    #print(y_train.shape) # (60000, 10, 1)
     return x_train, y_train
 
 network = [
@@ -59,17 +73,7 @@ train(
     use_r_prop=False
 )
 
-correct = 0
-c = 0
-for x, y in zip(x_test, y_test):
-    output = predict(network, x)
-    if np.argmax(output) == np.argmax(y):
-        correct = correct + 1
-    c = c+1
-
-print('Result: ' + str(correct) + '/' + str(c))
-
-# print(x_train.shape) # (60000, 28, 28)
-# print(x_train[0].shape) # (28, 28)
-# print(x_test.shape) # (10000, 28, 28)
+dev_predictions = make_predictions(x_test, network)
+print("Test accuracy:")
+print(get_accuracy(dev_predictions, y_test))
 

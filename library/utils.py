@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import  Callable, List
 import numpy as np
 
 # One hot encoding
@@ -54,17 +54,16 @@ def ReLU_prime(z: np.ndarray) -> np.ndarray:
 
 # Returns the indices of the maximum values along an axis.
 def get_predictions(a: np.ndarray) -> np.ndarray:
-    return np.argmax(a, axis=0)
+    return np.argmax(a, axis=1)
 
 # Accuracy function
 def get_accuracy(predictions: np.ndarray, y: np.ndarray) -> float:
+    y = np.argmax(y, axis=1)
     return np.sum(predictions == y) / y.size
 
 def flatten(input, stride, kernel_size):
     flattened_patches = []
-    r1 = (int)(np.floor((input.shape[0] - kernel_size) / stride)) + 1
-    r2 = (int)(np.floor((input.shape[1] - kernel_size) / stride)) + 1
-    
+
     w = input.shape[0]
     h = input.shape[1]
     for i in range(0, w, stride):

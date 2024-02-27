@@ -28,4 +28,5 @@ def train(network: list[Layer], loss_function, loss_prime, x_train, y_train: np.
         outputs = np.array(outputs)
         
         error /= len(x_train)
-        print(f"{e + 1}/{epochs}, error={error}")
+        print(f"{e + 1}/{epochs},\nerror={error}")
+        print("Accuracy: ", get_accuracy(get_predictions(outputs), y_train))

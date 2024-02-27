@@ -32,13 +32,13 @@ class Dense(Layer):
         max_step = 50.0
         min_step = 1e-6
         
-        change_w = np.sign(weights_gradient * prev_weights_gradient)
+        change_w = np.sign(weights_gradient * self.prev_grad_weights)
         self.step_sizes_weights = np.where(change_w > 0, np.minimum(self.step_sizes_weights * eta_plus, max_step),
                                          np.where(change_w < 0, np.maximum(self.step_sizes_weights * eta_minus, min_step),
                                                   self.step_sizes_weights))
         weight_update = -np.sign(weights_gradient) * self.step_sizes_weights
         self.weights += weight_update
-        prev_weights_gradient = np.where(change_w < 0, 0, weights_gradient)
+        self.prev_grad_weights = np.where(change_w < 0, 0, weights_gradient)
         
         # Bias updates
         change_b = np.sign(output_gradient * self.prev_grad_biases)
@@ -46,8 +46,5 @@ class Dense(Layer):
                                         np.where(change_b < 0, np.maximum(self.step_sizes_biases * eta_minus, min_step),
                                                  self.step_sizes_biases))
         bias_update = -np.sign(output_gradient) * self.step_sizes_biases
-        self.biases += bias_update
-        self.prev_grad_biases = np.where(change_b < 0, 0, output_gradient)
-        
-        
-        
+        self.bias += bias_update
+        self.prev_grad_biases = np.where(change_b < 0, 0, output_gradient)   
