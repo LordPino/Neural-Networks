@@ -1,7 +1,9 @@
 import numpy as np
 from library.activation import Activation
 from library.layer import Layer
+from library.utils import ReLU_function, ReLU_prime
 
+# Used to Normalize data. Usually used as Output layer
 class Sigmoid(Activation):
     def __init__(self):
         def sigmoid(x):
@@ -25,4 +27,7 @@ class Softmax(Layer):
         # Original formula:
         # tmp = np.tile(self.output, n)
         # return np.dot(tmp * (np.identity(n) - np.transpose(tmp)), output_gradient)
-    
+
+class ReLU(Activation):
+    def __init__(self):
+        super().__init__(ReLU_function, ReLU_prime)

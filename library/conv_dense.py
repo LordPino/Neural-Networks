@@ -1,30 +1,38 @@
 import numpy as np
 from library.layer import Layer
 
-class Dense(Layer):
-    def __init__(self, input_size, output_size):
-        self.weights = np.random.randn(output_size, input_size)
-        self.bias = np.random.randn(output_size, 1)
+class ConvDense(Layer):
+    def __init__(self, input_size, kernal_number):
+        self.k = np.random.randn(input_size[1], kernal_number)
+        
+        self.bias = np.random.randn(input_size[0], kernal_number)
+        
+        # TODO(): rprop in conv dense
+        """
         self.prev_grad_weights = np.zeros_like(self.weights)
         self.prev_grad_biases = np.zeros_like(self.bias)
         self.step_sizes_weights = 0.1 * np.ones_like(self.weights)
         self.step_sizes_biases = 0.1 * np.ones_like(self.bias)
+        """
         pass
 
     def forward(self, input):
         self.input = input
-        return np.dot(self.weights, self.input) + self.bias
+        return np.dot(self.input, self.k) + self.bias
 
     def backward(self, output_gradient, learning_rate: float, use_rprop: bool):
-        weights_gradient = np.dot(output_gradient, self.input.T)
-        input_gradient = np.dot(self.weights.T, output_gradient)
+        k_gradient = np.dot(output_gradient.T, self.input).T
+        input_gradient = np.dot(output_gradient, self.k.T)
         
-        if use_rprop:
-            self._rprop(weights_gradient, output_gradient)
-        else:
-            self.weights -= learning_rate * weights_gradient
-            self.bias -= learning_rate * output_gradient
+        # print("output shape: " + output_gradient.shape)
+        # print("self.input shape: " + self.input.shape)
+        # print("k_gradient shape: " + k_gradient.shape)
+        # print("input_gradient: " + input_gradient.shape)
+        
+        self.k -= learning_rate * k_gradient
+        self.bias -= learning_rate * output_gradient
         return input_gradient
+        
     
     def _rprop(self, weights_gradient, output_gradient):
         eta_plus = 1.2

@@ -338,7 +338,7 @@ def gradint_descent(
 
     return weights, biases
 
-data = pd.read_csv(r'.\\train.csv')
+data = pd.read_csv(r'.\\test_data\\train.csv')
 data = np.array(data)
 m, n = data.shape
 np.random.shuffle(data)
