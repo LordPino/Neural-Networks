@@ -8,6 +8,7 @@ from library.dense import Dense
 
 from library.layer import Layer
 from library.network import predict, train
+from library.reshape import Reshape
 from library.utils import cross_entropy_loss, derivatie_cross_entropy, flatten_list, get_accuracy, get_predictions
 from keras.utils import to_categorical
 
@@ -47,7 +48,7 @@ def preprocess_data(x: np.ndarray, y: np.ndarray, limit: int = 60000):
     #print(y_train.shape) # (60000, 10, 1)
     return x_train, y_train
 
-network = [
+network_1K = [
     ConvDense((169, 16), 1), # ConvDense. K = 16x1 
     ReLU(),
     Dense(169, 100),
@@ -56,24 +57,52 @@ network = [
     Softmax(),
 ]
 
-
+network_8K = [
+    ConvDense((169, 16), 8), # ConvDense. K = 16x8
+    # espansione colonne 16x8, indietro compressione colonne 128/8
+    ReLU(),
+    Dense(169, 100),
+    Sigmoid(),
+    Dense(100, 10),
+    Softmax(),
+]
 (x_train, y_train), (x_test, y_test) = mnist.load_data()
 
 x_train, y_train = preprocess_data(x_train, y_train, 100)
 x_test, y_test = preprocess_data(x_test, y_test, 100)
 
-train(
+'''
+errors_1k, accuracies_1K = train(
     x_train=x_train,
     y_train=y_train,
     epochs=40,
     learning_rate=0.01,
     loss_prime=derivatie_cross_entropy,
     loss_function=cross_entropy_loss,
-    network=network,
+    network=network_1K,
     use_r_prop=False
 )
 
-dev_predictions = make_predictions(x_test, network)
+dev_predictions = make_predictions(x_test, network_1K)
 print("Test accuracy:")
-print(get_accuracy(dev_predictions, y_test))
+test_accuracy_network_1K = get_accuracy(dev_predictions, y_test)
+print(test_accuracy_network_1K)
+'''
+
+errors_8k, accuracies_8K = train(
+    x_train=x_train,
+    y_train=y_train,
+    epochs=40,
+    learning_rate=0.01,
+    loss_prime=derivatie_cross_entropy,
+    loss_function=cross_entropy_loss,
+    network=network_8K,
+    use_r_prop=False
+)
+
+dev_predictions = make_predictions(x_test, network_8K)
+print("Test accuracy:")
+test_accuracy_network_8K = get_accuracy(dev_predictions, y_test)
+print(test_accuracy_network_8K)
+
 

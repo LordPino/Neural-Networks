@@ -68,19 +68,16 @@ def gradient_descent(X, Y, alpha, iterations):
             print(get_accuracy(predictions, Y))
     return W1, b1, W2, b2
 
-data = pd.read_csv(r'test_data\train.csv\train.csv')
-data = np.array(data)
-m, n = data.shape
-np.random.shuffle(data)
+matrix = np.array([
+    [1, 2, 3, 4],
+    [5, 6, 7, 8]
+])
 
-data_dev = data[0: 1000].T
-Y_dev = data_dev[0]
-X_dev = data_dev[1: n]
+# Calculate the sum of each row
+row_sums = np.array(np.sum(matrix, axis=1)).T
 
-data_train = data[1000: m].T
-Y_train = data_train[0]
-X_train = data_train[1:n]
-X_train = X_train / 255.
-_,m_train = X_train.shape
+# Print the sums
+print("Row sums:", row_sums)
 
-W1, b1, W2, b2 = gradient_descent(X_train, Y_train, 0.10, 500)
+# Print the shape of the row_sums vector
+print("Shape of row_sums:", row_sums.shape)

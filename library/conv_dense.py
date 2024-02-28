@@ -5,7 +5,7 @@ class ConvDense(Layer):
     def __init__(self, input_size, kernal_number):
         self.k = np.random.randn(input_size[1], kernal_number)
         
-        self.biases = np.random.randn(input_size[0], kernal_number)
+        self.biases = np.random.randn(input_size[0], 1)
         
         self.prev_grad_k = np.zeros_like(self.k)
         self.prev_grad_biases = np.zeros_like(self.biases)
@@ -15,10 +15,17 @@ class ConvDense(Layer):
 
     def forward(self, input):
         self.input = input
-        return np.dot(self.input, self.k) + self.biases
+        
+        partial_output = np.dot(self.input, self.k)
+        output = np.sum(partial_output, axis=1)
+        output = output[:, np.newaxis]
+        output += self.biases
+        
+        return output
 
     def backward(self, output_gradient, learning_rate: float, use_rprop: bool):
         k_gradient = np.dot(output_gradient.T, self.input).T
+        # problema delle dimensioni causa somma 
         input_gradient = np.dot(output_gradient, self.k.T)
         
         if not use_rprop:
