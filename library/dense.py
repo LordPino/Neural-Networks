@@ -17,7 +17,7 @@ class Dense(Layer):
 
     def backward(self, output_gradient, learning_rate: float, use_rprop: bool):
         weights_gradient = np.dot(output_gradient, self.input.T)
-        input_gradient = np.dot(self.weights.T, output_gradient)
+        input_gradient = np.dot(self.weights.T, output_gradient) 
         
         if use_rprop:
             self._rprop(weights_gradient, output_gradient)

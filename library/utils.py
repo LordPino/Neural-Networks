@@ -3,9 +3,10 @@ import numpy as np
 
 # One hot encoding
 def one_hot(y: np.ndarray) -> np.ndarray:
-    one_hot_y = np.zeros((y.size, y.max() + 1))
-    one_hot_y[np.arange(y.size), y] = 1
-    one_hot_y = one_hot_y.T
+    print(f"Size: {y.size}, v: {y.max()}")
+    one_hot_y = np.zeros((y.size, int(y.max()) + 1))
+    y_int = y.astype(int)
+    one_hot_y[np.arange(y.size), y_int] = 1
     
     return one_hot_y
 
@@ -50,7 +51,8 @@ def ReLU_function(z: np.ndarray) -> np.ndarray:
 
 # Derivative of the ReLU function
 def ReLU_prime(z: np.ndarray) -> np.ndarray:
-    return np.where(z > 0, 1, 0)
+    output = np.where(z > 0, 1, 0)
+    return output
 
 # Returns the indices of the maximum values along an axis.
 def get_predictions(a: np.ndarray) -> np.ndarray:

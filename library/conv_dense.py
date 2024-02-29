@@ -2,9 +2,8 @@ import numpy as np
 from library.layer import Layer
 
 class ConvDense(Layer):
-    def __init__(self, input_size, kernal_number):
+    def __init__(self, input_size, kernal_number, use_cross_entropy: bool = False):
         self.k = np.random.randn(input_size[1], kernal_number)
-        
         self.biases = np.random.randn(input_size[0], 1)
         
         self.prev_grad_k = np.zeros_like(self.k)
@@ -16,15 +15,11 @@ class ConvDense(Layer):
     def forward(self, input):
         self.input = input
         
-        partial_output = np.dot(self.input, self.k)
-        output = np.sum(partial_output, axis=1)
-        output = output[:, np.newaxis]
-        output += self.biases
-        
+        output = np.dot(self.input, self.k) + self.biases
         return output
 
     def backward(self, output_gradient, learning_rate: float, use_rprop: bool):
-        k_gradient = np.dot(output_gradient.T, self.input).T
+        k_gradient = np.dot(self.input.T, output_gradient)
         # problema delle dimensioni causa somma 
         input_gradient = np.dot(output_gradient, self.k.T)
         
@@ -41,22 +36,23 @@ class ConvDense(Layer):
         max_step = 50.0
         min_step = 1e-6
         
-        change_w = np.sign(k_gradient * self.prev_grad_k)
-        self.step_sizes_k = np.where(change_w > 0, np.minimum(self.step_sizes_k * eta_plus, max_step),
-                                         np.where(change_w < 0, np.maximum(self.step_sizes_k * eta_minus, min_step),
-                                                  self.step_sizes_k))
-        k_update = -np.sign(k_gradient) * self.step_sizes_k
-        self.k += k_update
-        self.prev_grad_k = np.where(change_w < 0, 0, k_gradient)
-        
-        # Bias updates
-        change_b = np.sign(output_gradient * self.prev_grad_biases)
-        self.step_sizes_biases = np.where(change_b > 0, np.minimum(self.step_sizes_biases * eta_plus, max_step),
-                                        np.where(change_b < 0, np.maximum(self.step_sizes_biases * eta_minus, min_step),
-                                                 self.step_sizes_biases))
-        bias_update = -np.sign(output_gradient) * self.step_sizes_biases
-        self.biases += bias_update
-        self.prev_grad_biases = np.where(change_b < 0, 0, output_gradient)
-        
-        
-        
+        bias_gradient = output_gradient.sum(axis=0, keepdims=True)
+        # Update for weights
+        for param, delta, prev_grad, grad in [
+            (self.k, self.step_sizes_k, self.prev_grad_k, k_gradient),
+            (self.biases, self.step_sizes_biases, self.prev_grad_biases, bias_gradient)
+        ]:
+            sign_change = np.sign(grad) * np.sign(prev_grad)
+            delta *= np.where(sign_change > 0, eta_plus, np.where(sign_change < 0, eta_minus, 1))
+            delta = np.clip(delta, min_step, max_step)
+
+            update_direction = np.sign(grad)
+            param -= update_direction * delta
+            # Only reset gradients when sign changes
+            np.copyto(prev_grad, grad, where=sign_change >= 0)
+
+        # Ensure the updates for next iteration are prepared
+        self.prev_grad_k = k_gradient
+        self.prev_grad_biases = bias_gradient
+            
+            

@@ -5,6 +5,7 @@ import numpy as np
 from library.activations import ReLU, Sigmoid, Softmax
 from library.conv_dense import ConvDense
 from library.dense import Dense
+from library.input_layer import InputLayer
 
 from library.layer import Layer
 from library.network import predict, train
@@ -58,13 +59,13 @@ network_1K = [
 ]
 
 network_8K = [
-    ConvDense((169, 16), 8), # ConvDense. K = 16x8
-    # espansione colonne 16x8, indietro compressione colonne 128/8
+    InputLayer(2),
+    ConvDense((169, 32), 1), # ConvDense. K = 16x8
     ReLU(),
-    Dense(169, 100),
+    Dense(169, 13),
     Sigmoid(),
-    Dense(100, 10),
-    Softmax(),
+    Dense(13, 10),
+    Softmax(use_cross_entropy=True),
 ]
 (x_train, y_train), (x_test, y_test) = mnist.load_data()
 
@@ -80,15 +81,15 @@ errors_1k, accuracies_1K = train(
     loss_prime=derivatie_cross_entropy,
     loss_function=cross_entropy_loss,
     network=network_1K,
-    use_r_prop=False
+    use_r_prop=True
 )
 
 dev_predictions = make_predictions(x_test, network_1K)
 print("Test accuracy:")
 test_accuracy_network_1K = get_accuracy(dev_predictions, y_test)
 print(test_accuracy_network_1K)
-'''
 
+'''
 errors_8k, accuracies_8K = train(
     x_train=x_train,
     y_train=y_train,
@@ -97,12 +98,10 @@ errors_8k, accuracies_8K = train(
     loss_prime=derivatie_cross_entropy,
     loss_function=cross_entropy_loss,
     network=network_8K,
-    use_r_prop=False
+    use_r_prop=True
 )
 
 dev_predictions = make_predictions(x_test, network_8K)
 print("Test accuracy:")
 test_accuracy_network_8K = get_accuracy(dev_predictions, y_test)
 print(test_accuracy_network_8K)
-
-
