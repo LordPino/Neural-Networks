@@ -68,16 +68,100 @@ def gradient_descent(X, Y, alpha, iterations):
             print(get_accuracy(predictions, Y))
     return W1, b1, W2, b2
 
-matrix = np.array([
-    [1, 2, 3, 4],
-    [5, 6, 7, 8]
+def flatten(input, stride, kernel_size):
+    flattened_patches = []
+    w = input.shape[0]
+    h = input.shape[1]
+    for i in range(0, w, stride):
+        if i+kernel_size > w:
+            continue
+        for j in range(0, h, stride):
+            if j+kernel_size > h:
+                continue
+            patch = input[i:i+kernel_size, j:j+kernel_size]
+            flattened_patches.append(patch.flatten())
+    return flattened_patches
+
+def flatten_list(x_train):
+    results = []
+    for i in range(len(x_train)):
+        f = flatten(x_train[i], 2, 4)
+        results.append(f)
+    return results
+
+def reconstruct_from_flattened_patches(flattened_patches, orig_w, orig_h, stride, kernel_size):
+    reconstructed_image = np.zeros((orig_w, orig_h))
+    patch_idx = 0
+    for i in range(0, orig_w, stride):
+        if i + kernel_size > orig_w:
+            continue
+        for j in range(0, orig_h, stride):
+            if j + kernel_size > orig_h:
+                continue
+            patch = flattened_patches[patch_idx].reshape(kernel_size, kernel_size)
+            reconstructed_image[i:i+kernel_size, j:j+kernel_size] = patch
+            patch_idx += 1
+    return reconstructed_image
+
+# Create a simple 8x8 grayscale image
+orig_image = np.array([
+    [1, 2, 3, 4, 5, 6, 7, 8],
+    [2, 3, 4, 5, 6, 7, 8, 9],
+    [3, 4, 5, 6, 7, 8, 9, 10],
+    [4, 5, 6, 7, 8, 9, 10, 11],
+    [5, 6, 7, 8, 9, 10, 11, 12],
+    [6, 7, 8, 9, 10, 11, 12, 13],
+    [7, 8, 9, 10, 11, 12, 13, 14],
+    [8, 9, 10, 11, 12, 13, 14, 15]
 ])
 
-# Calculate the sum of each row
-row_sums = np.array(np.sum(matrix, axis=1)).T
+# Flatten the image into patches
+flattened_patches = flatten(orig_image, 2, 4)
 
-# Print the sums
-print("Row sums:", row_sums)
+# Assume each "image" in x_train is just our original image for demonstration
+x_train = [orig_image]
+flattened_list = flatten_list(x_train)
 
-# Print the shape of the row_sums vector
-print("Shape of row_sums:", row_sums.shape)
+# Flatten the list since our reconstruction function expects a flat list of patches
+flattened_patches = [item for sublist in flattened_list for item in sublist]
+
+# Reconstruct the image
+reconstructed_image = reconstruct_from_flattened_patches(flattened_patches, 8, 8, 2, 4)
+
+# Print both the original and reconstructed images for comparison
+print("Original Image:\n", orig_image)
+print("flattened_patches:\n", flattened_patches)
+print("Reconstructed Image:\n", reconstructed_image)
+
+
+
+
+import numpy as np
+
+def matrix_multiply_and_flatten(M, matrices_list):
+    # M is the matrix with dimensions K x P
+    # matrices_list is the list of S matrices, each of dimensions P x P
+    
+    flattened_results = []
+    
+    # Iterate over each P x P matrix in the list
+    for matrix in matrices_list:
+        # Perform matrix multiplication M * matrix (resulting in a K x P matrix)
+        result = np.dot(M, matrix)
+        
+        # Flatten the resulting matrix and append it to the list
+        flattened_results.append(result.flatten())
+    
+    # Concatenate all flattened results side by side
+    # This results in a matrix of dimensions (K*P) x S
+    final_matrix = np.column_stack(flattened_results)
+    
+    return final_matrix
+
+# Example usage
+K, P, S = 3, 2, 4  # Example dimensions
+M = np.random.rand(K, P)  # Example matrix M of dimensions K x P
+matrices_list = [np.random.rand(P, P) for _ in range(S)]  # List of S matrices, each of dimensions P x P
+
+result_matrix = matrix_multiply_and_flatten(M, matrices_list)
+print("Result Matrix:\n", result_matrix)

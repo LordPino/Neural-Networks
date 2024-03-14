@@ -39,7 +39,7 @@ def preprocess_data(x: np.ndarray, y: np.ndarray, limit: int = 60000):
     x = x[all_indices]  # Select balanced set of features
     y = y[all_indices]  # Select balanced set of labels
     
-    x_train = flatten_list(x)
+    x_train = flatten_list(x, 4, 4)
     x_train = np.array(x_train)
     x_train = x_train.astype("float32") / 255
     #print(x_train.shape) # (60000, 169, 16)
@@ -59,18 +59,19 @@ network_1K = [
 ]
 
 network_8K = [
-    InputLayer(2),
-    ConvDense((169, 32), 1), # ConvDense. K = 16x8
+    #InputLayer(2),
+    ConvDense((49, 16), 8), 
     ReLU(),
-    Dense(169, 13),
-    Sigmoid(),
-    Dense(13, 10),
+    Reshape((49, 8), (49 * 8, 1)),
+    Dense(49 * 8, 49),
+    ReLU(),
+    Dense(49, 10),
     Softmax(use_cross_entropy=True),
 ]
 (x_train, y_train), (x_test, y_test) = mnist.load_data()
 
-x_train, y_train = preprocess_data(x_train, y_train, 100)
-x_test, y_test = preprocess_data(x_test, y_test, 100)
+x_train, y_train = preprocess_data(x_train, y_train, 10000)
+x_test, y_test = preprocess_data(x_test, y_test, 2500)
 
 '''
 errors_1k, accuracies_1K = train(
@@ -93,12 +94,12 @@ print(test_accuracy_network_1K)
 errors_8k, accuracies_8K = train(
     x_train=x_train,
     y_train=y_train,
-    epochs=40,
+    epochs=8,
     learning_rate=0.01,
     loss_prime=derivatie_cross_entropy,
     loss_function=cross_entropy_loss,
     network=network_8K,
-    use_r_prop=True
+    use_r_prop=False
 )
 
 dev_predictions = make_predictions(x_test, network_8K)

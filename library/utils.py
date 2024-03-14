@@ -80,10 +80,64 @@ def flatten(input, stride, kernel_size):
             flattened_patches.append(patch.flatten())
     return flattened_patches
 
-def flatten_list(x_train):
+def flatten_list(x_train, stride, kernel_size):
     results = []
     for i in range(0, len(x_train)):
-        f = flatten(x_train[i], 2, 4)
+        f = flatten(x_train[i], stride, kernel_size)
         results.append(f)
     
     return results
+
+def reshape_columns_to_square_matrices(A):
+    # Check if the number of rows (M) is a perfect square
+    M = A.shape[0]
+    if np.sqrt(M) % 1 != 0:
+        raise ValueError("The number of rows (M) must be a perfect square.")
+
+    # Calculate the side length of the square matrix
+    side_length = int(np.sqrt(M))
+
+    # Initialize an empty list to store the square matrices
+    square_matrices = []
+
+    # Iterate through each column of A
+    for column in range(A.shape[1]):
+        # Extract the current column and reshape it into a square matrix
+        square_matrix = A[:, column].reshape(side_length, side_length)
+        square_matrices.append(square_matrix)
+
+    return square_matrices
+
+def reconstruct_from_flattened_patches(flattened_patches, orig_w, orig_h, stride, kernel_size):
+    reconstructed_image = np.zeros((orig_w, orig_h))
+    patch_idx = 0
+    for i in range(0, orig_w, stride):
+        if i + kernel_size > orig_w:
+            continue
+        for j in range(0, orig_h, stride):
+            if j + kernel_size > orig_h:
+                continue
+            patch = flattened_patches[patch_idx].reshape(kernel_size, kernel_size)
+            reconstructed_image[i:i+kernel_size, j:j+kernel_size] = patch
+            patch_idx += 1
+    return reconstructed_image
+
+def matrix_multiply_and_flatten(M, matrices_list):
+    # M is the matrix with dimensions K x P
+    # matrices_list is the list of S matrices, each of dimensions P x P
+    
+    flattened_results = []
+    
+    # Iterate over each P x P matrix in the list
+    for matrix in matrices_list:
+        # Perform matrix multiplication M * matrix (resulting in a K x P matrix)
+        result = np.dot(M, matrix.flatten())
+        
+        # Flatten the resulting matrix and append it to the list
+        flattened_results.append(result)
+    
+    # Concatenate all flattened results side by side
+    # This results in a matrix of dimensions (K*P) x S
+    final_matrix = np.column_stack(flattened_results)
+    
+    return final_matrix
